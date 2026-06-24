@@ -212,15 +212,15 @@ if AUTH_ENABLED:
                             if app.state._token_cache_dirty:
                                 await _asyncio.to_thread(_refresh_token_cache)
                     candidates = list(_token_cache.get(prefix, ()))
-                    matched_id = None
-                    matched_owner = None
-                    matched_scopes = []
-                    for tid, thash, owner, scopes in candidates:
-                        if _bcrypt.checkpw(raw_token.encode(), thash.encode()):
-                            matched_id = tid
-                            matched_owner = owner
-                            matched_scopes = scopes or []
-                            break
+
+                    def _find_match():
+                        for tid, thash, owner, scopes in candidates:
+                            if _bcrypt.checkpw(raw_token.encode(), thash.encode()):
+                                return tid, owner, scopes or []
+                        return None, None, []
+
+                    matched_id, matched_owner, matched_scopes = await _asyncio.to_thread(_find_match)
+
                     if matched_id:
                         # Update last_used_at off the hot path. Doing it
                         # inline used to keep the request open across an
