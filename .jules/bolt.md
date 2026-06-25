@@ -1,0 +1,3 @@
+## 2024-06-25 - Avoid N+1 query in cleanup using denormalized message count
+**Learning:** In `src/cleanup_service.py`, during the session cleanup process, an N+1 query vulnerability existed where a count query was run against the `ChatMessage` table for each session. The codebase correctly maintains a denormalized `message_count` column on the `Session` model which can be used instead to safely avoid the performance degradation of thousands of unexpected database reads without losing data accuracy.
+**Action:** Always favor denormalized aggregation fields (like `message_count` on parent models) when iterating over collections of items to avoid emitting N+1 aggregate queries down to large relational tables like `ChatMessage`.

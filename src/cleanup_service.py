@@ -83,7 +83,7 @@ async def cleanup_old_sessions(session_manager, owner: Optional[str] = None) -> 
     deleted_count = 0
     space_freed = 0
 
-    from src.database import SessionLocal, Session as DbSession, ChatMessage as DbChatMessage
+    from src.database import SessionLocal, Session as DbSession
     db = SessionLocal()
     try:
         recent_q = db.query(DbSession).order_by(DbSession.created_at.desc())
@@ -120,10 +120,9 @@ async def cleanup_old_sessions(session_manager, owner: Optional[str] = None) -> 
             sessions_to_delete.append(session)
 
         for session in sessions_to_delete:
-            message_count = db.query(DbChatMessage).filter(
-                DbChatMessage.session_id == session.id
-            ).count()
-            space_freed += message_count * CleanupConfig.ESTIMATED_MESSAGE_SIZE_BYTES
+            # ⚡ Bolt: Prevent N+1 query issue. Use pre-calculated message_count
+            # instead of counting DbChatMessage rows for each session.
+            space_freed += session.message_count * CleanupConfig.ESTIMATED_MESSAGE_SIZE_BYTES
 
         session_ids = [session.id for session in sessions_to_delete]
         if session_ids:
